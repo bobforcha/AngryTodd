@@ -3,6 +3,7 @@ project(AngryTodd)
 set(CMAKE_CXX_STANDARD 23)
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/cpm.cmake)
 
