@@ -53,6 +53,13 @@ namespace AngryToddInterstages
     {
         return { 22e-9, 1.5e-9, 470e3, 62e3, 0.0, 0.0 };
     }
+
+    // V2A → V3A coupling network
+    // C17=22nF, C18=680pF shunt, R19=470kΩ, R20=62kΩ, no second path
+    inline InterstageConfig V2A_to_V3A()
+    {
+        return { 22e-9, 680e-12, 470e3, 62e3, 0.0, 0.0 };
+    }
 }
 
 class InterstageFilter

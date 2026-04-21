@@ -104,13 +104,14 @@ void LevelContourFilter::process (juce::dsp::AudioBlock<float>& block)
         // When LEVEL is muted (R_lower = 0), the output node is shorted
         // to ground and both paths are killed.
 
-        // levelAmount: 0 = muted, 1 = full volume
-        float R_lower = levelAmount * static_cast<float> (P3_total);
+        // levelAmount: 0 = muted, 1 = full volume (audio taper)
+        float lvl = levelAmount * levelAmount;
+        float R_lower = lvl * static_cast<float> (P3_total);
         float P4_R = (1.0f - highContourAmount) * static_cast<float> (P4_max);
         float contourGain = (P4_R + R_lower > 0.0f)
                           ? R_lower / (P4_R + R_lower)
                           : 0.0f;
-        float levelGain = levelAmount;
+        float levelGain = lvl;
 
         for (size_t n = 0; n < numSamples; ++n)
             data[n] = data[n] * levelGain + temp[n] * contourGain;

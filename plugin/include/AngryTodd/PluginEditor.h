@@ -35,6 +35,21 @@ private:
     juce::Slider highContourSlider;
     juce::Label highContourLabel;
 
+    juce::Slider trebleSlider;
+    juce::Label trebleLabel;
+
+    juce::Slider bassSlider;
+    juce::Label bassLabel;
+
+    juce::Slider midSlider;
+    juce::Label midLabel;
+
+    juce::Slider limitSlider;
+    juce::Label limitLabel;
+
+    juce::Slider highCutSlider;
+    juce::Label highCutLabel;
+
     AudioPluginAudioProcessor& processorRef;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

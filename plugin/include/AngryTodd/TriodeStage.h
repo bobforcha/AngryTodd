@@ -76,6 +76,13 @@ namespace AngryToddStages
     {
         return { 100.0, 62500.0, 100e3, 2.7e3, 470e-9 };
     }
+
+    // V3A: Fifth gain stage
+    // R22=100kΩ plate, R21=2.7kΩ cathode, C19=470nF bypass
+    inline TriodeStageConfig V3A()
+    {
+        return { 100.0, 62500.0, 100e3, 2.7e3, 470e-9 };
+    }
 }
 
 class TriodeStage
