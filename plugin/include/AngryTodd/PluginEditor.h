@@ -50,6 +50,12 @@ private:
     juce::Slider highCutSlider;
     juce::Label highCutLabel;
 
+    juce::Slider masterSlider;
+    juce::Label masterLabel;
+
+    juce::Slider boostMasterSlider;
+    juce::Label boostMasterLabel;
+
     AudioPluginAudioProcessor& processorRef;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessorEditor)

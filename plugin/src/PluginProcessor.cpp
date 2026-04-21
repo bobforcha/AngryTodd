@@ -102,6 +102,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     v2aInterstage.prepare (spec);
     v3aStage.prepare (spec);
     toneStack.prepare (spec);
+    masterSection.prepare (spec);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -167,9 +168,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     v3aStage.process (block);
     // V3B cathode follower: unity gain buffer, no processing
     toneStack.process (block);
+    masterSection.process (block);
+    // V4A + V4B cathode followers: unity gain buffers, no processing
 
     // Output trim — compensate for cumulative gain through the preamp chain
-    static constexpr float outputTrimDb = -27.0f;
+    static constexpr float outputTrimDb = -18.0f;
     static const float outputTrimGain = std::pow (10.0f, outputTrimDb / 20.0f);
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
@@ -219,6 +222,7 @@ void AudioPluginAudioProcessor::setBoostSwitch (bool engaged)
     boostEngaged = engaged;
     updateV2bCathodePot();
     toneStack.setBoostHighCutEnabled (engaged);
+    masterSection.setBoostEngaged (engaged);
 }
 
 void AudioPluginAudioProcessor::setLevel (float normalised)
@@ -230,6 +234,9 @@ void AudioPluginAudioProcessor::setHighContour (float normalised)
 {
     levelContour.setHighContour (normalised);
 }
+
+void AudioPluginAudioProcessor::setMaster (float normalised) { masterSection.setMaster (normalised); }
+void AudioPluginAudioProcessor::setBoostMaster (float normalised) { masterSection.setBoostMaster (normalised); }
 
 void AudioPluginAudioProcessor::setTreble (float normalised) { toneStack.setTreble (normalised); }
 void AudioPluginAudioProcessor::setBass (float normalised) { toneStack.setBass (normalised); }

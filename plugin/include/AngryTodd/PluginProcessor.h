@@ -6,6 +6,7 @@
 #include "InterstageFilter.h"
 #include "LevelContourFilter.h"
 #include "ToneStack.h"
+#include "MasterSection.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -72,6 +73,10 @@ public:
     void setLimit (float normalised);
     void setBoosterHighCut (float normalised);
 
+    // Master volume controls (0–1)
+    void setMaster (float normalised);
+    void setBoostMaster (float normalised);
+
 private:
     // BOOST switch and pot state
     bool boostEngaged = false;
@@ -89,8 +94,10 @@ private:
     TriodeStage v2aStage { AngryToddStages::V2A() };
     InterstageFilter v2aInterstage { AngryToddInterstages::V2A_to_V3A() };
     TriodeStage v3aStage { AngryToddStages::V3A() };
-    // V3B cathode follower: unity gain buffer (no DSP processing needed)
+    // V3B cathode follower: unity gain buffer
     ToneStack toneStack;
+    MasterSection masterSection;
+    // V4A + V4B cathode followers: unity gain buffers
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)

@@ -26,6 +26,7 @@ set(SOURCE_FILES
     src/InterstageFilter.cpp
     src/LevelContourFilter.cpp
     src/ToneStack.cpp
+    src/MasterSection.cpp
 )
 
 set(HEADER_FILES
@@ -38,6 +39,7 @@ set(HEADER_FILES
     ${INCLUDE_DIR}/InterstageFilter.h
     ${INCLUDE_DIR}/LevelContourFilter.h
     ${INCLUDE_DIR}/ToneStack.h
+    ${INCLUDE_DIR}/MasterSection.h
 )
 
 target_sources(${PROJECT_NAME}

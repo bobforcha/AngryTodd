@@ -5,7 +5,7 @@
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
-    setSize (1200, 500);
+    setSize (1400, 500);
 
     // Input Gain knob
     inputGainSlider.setSliderStyle (juce::Slider::Rotary);
@@ -131,6 +131,30 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     highCutLabel.setText ("High Cut", juce::dontSendNotification);
     highCutLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (highCutLabel);
+
+    // Master knob
+    masterSlider.setSliderStyle (juce::Slider::Rotary);
+    masterSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
+    masterSlider.setRange (0.0, 1.0, 0.01);
+    masterSlider.setValue (0.5);
+    masterSlider.addListener (this);
+    addAndMakeVisible (masterSlider);
+
+    masterLabel.setText ("Master", juce::dontSendNotification);
+    masterLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (masterLabel);
+
+    // Boost Master knob
+    boostMasterSlider.setSliderStyle (juce::Slider::Rotary);
+    boostMasterSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
+    boostMasterSlider.setRange (0.0, 1.0, 0.01);
+    boostMasterSlider.setValue (0.5);
+    boostMasterSlider.addListener (this);
+    addAndMakeVisible (boostMasterSlider);
+
+    boostMasterLabel.setText ("Boost Master", juce::dontSendNotification);
+    boostMasterLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (boostMasterLabel);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -210,6 +234,16 @@ void AudioPluginAudioProcessorEditor::resized()
     x += knobSize + spacing;
     highCutLabel.setBounds (x, row2Y, knobSize, labelHeight);
     highCutSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
+
+    // Master
+    x += knobSize + spacing;
+    masterLabel.setBounds (x, row2Y, knobSize, labelHeight);
+    masterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
+
+    // Boost Master
+    x += knobSize + spacing;
+    boostMasterLabel.setBounds (x, row2Y, knobSize, labelHeight);
+    boostMasterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 }
 
 void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider)
@@ -234,6 +268,10 @@ void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider)
         processorRef.setLimit (static_cast<float> (limitSlider.getValue()));
     else if (slider == &highCutSlider)
         processorRef.setBoosterHighCut (static_cast<float> (highCutSlider.getValue()));
+    else if (slider == &masterSlider)
+        processorRef.setMaster (static_cast<float> (masterSlider.getValue()));
+    else if (slider == &boostMasterSlider)
+        processorRef.setBoostMaster (static_cast<float> (boostMasterSlider.getValue()));
 }
 
 void AudioPluginAudioProcessorEditor::buttonClicked (juce::Button* button)
