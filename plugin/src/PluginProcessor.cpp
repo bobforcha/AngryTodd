@@ -58,8 +58,7 @@ double AudioPluginAudioProcessor::getTailLengthSeconds() const
 
 int AudioPluginAudioProcessor::getNumPrograms()
 {
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+    return 1;
 }
 
 int AudioPluginAudioProcessor::getCurrentProgram()
@@ -86,15 +85,24 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    juce::dsp::ProcessSpec spec {
+        sampleRate,
+        static_cast<juce::uint32> (samplesPerBlock),
+        static_cast<juce::uint32> (getTotalNumOutputChannels())
+    };
+
+    inputCoupling.prepare (spec);
+    v1bStage.prepare (spec);
+    v1bInterstage.prepare (spec);
+    v1aStage.prepare (spec);
+    v1aInterstage.prepare (spec);
+    v2bStage.prepare (spec);
+    levelContour.prepare (spec);
+    v2aStage.prepare (spec);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -103,15 +111,10 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -130,36 +133,49 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // rawVolume param
-    // rawVolume = 0.15f;
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+    // Apply input gain and noise gate
+    // High-gain amp stages amplify even -96dB noise to 0dB,
+    // so gate the input to prevent amplifying the DAW noise floor.
+    static constexpr float gateThreshold = 1e-6f; // ~ -120 dBFS
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            float s = channelData[sample] * inputGain;
+            channelData[sample] = (std::abs (s) < gateThreshold) ? 0.0f : s;
+        }
+    }
+
+    // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A
+    auto block = juce::dsp::AudioBlock<float> (buffer);
+    inputCoupling.process (block);
+    v1bStage.process (block);
+    v1bInterstage.process (block);
+    v1aStage.process (block);
+    v1aInterstage.process (block);
+    v2bStage.process (block);
+    levelContour.process (block);
+    v2aStage.process (block);
+
+    // Output trim — compensate for cumulative gain through the preamp chain
+    static constexpr float outputTrimDb = -27.0f;
+    static const float outputTrimGain = std::pow (10.0f, outputTrimDb / 20.0f);
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        auto* channelData = buffer.getWritePointer (channel);
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            channelData[sample] *= outputTrimGain;
     }
 }
 
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return true;
 }
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
@@ -170,21 +186,59 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
     juce::ignoreUnused (destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
 }
 
+void AudioPluginAudioProcessor::setLowContour (float normalised)
+{
+    // normalised: 0.0 = full bass boost (pot at 0Ω), 1.0 = no extra bypass (pot at 50kΩ)
+    float potR = normalised * static_cast<float> (AngryToddStages::V1B().RpotMax);
+    v1bStage.setCathodePotResistance (potR);
+}
+
+void AudioPluginAudioProcessor::setBoosterFat (float normalised)
+{
+    boosterFatNormalised = normalised;
+    updateV2bCathodePot();
+}
+
+void AudioPluginAudioProcessor::setBoostSwitch (bool engaged)
+{
+    boostEngaged = engaged;
+    updateV2bCathodePot();
+}
+
+void AudioPluginAudioProcessor::setLevel (float normalised)
+{
+    levelContour.setLevel (normalised);
+}
+
+void AudioPluginAudioProcessor::setHighContour (float normalised)
+{
+    levelContour.setHighContour (normalised);
+}
+
+void AudioPluginAudioProcessor::updateV2bCathodePot()
+{
+    if (boostEngaged)
+    {
+        // BOOST ON: P2 controls the bass boost amount
+        float potR = boosterFatNormalised * static_cast<float> (AngryToddStages::V2B().RpotMax);
+        v2bStage.setCathodePotResistance (potR);
+    }
+    else
+    {
+        // BOOST OFF: C12 shorted to ground, bypassing P2 = full bass boost
+        v2bStage.setCathodePotResistance (0.0f);
+    }
+}
+
 //==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new AudioPluginAudioProcessor();

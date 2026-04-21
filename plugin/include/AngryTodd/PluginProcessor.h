@@ -1,6 +1,10 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "InputCoupling.h"
+#include "TriodeStage.h"
+#include "InterstageFilter.h"
+#include "LevelContourFilter.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -42,7 +46,40 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Parameters (directly accessible for now; will migrate to AudioProcessorValueTreeState)
+    float inputGain = 1.0f;
+
+    // Set LOW CONTOUR pot (0.0 = full bass boost, 1.0 = no extra bypass)
+    void setLowContour (float normalised);
+
+    // Set BOOSTER FAT pot (0.0 = full bass boost, 1.0 = no extra bypass)
+    void setBoosterFat (float normalised);
+
+    // Set BOOST switch (true = P2 controls bass, false = C12 shorted to ground = full boost)
+    void setBoostSwitch (bool engaged);
+
+    // Set LEVEL (0.0 = full volume, 1.0 = muted)
+    void setLevel (float normalised);
+
+    // Set HIGH CONTOUR (0.0 = no treble, 1.0 = full treble)
+    void setHighContour (float normalised);
+
 private:
+    // BOOST switch and pot state
+    bool boostEngaged = false;
+    float boosterFatNormalised = 0.5f;
+    void updateV2bCathodePot();
+
+    // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A
+    InputCoupling inputCoupling;
+    TriodeStage v1bStage { AngryToddStages::V1B() };
+    InterstageFilter v1bInterstage { AngryToddInterstages::V1B_to_V1A() };
+    TriodeStage v1aStage { AngryToddStages::V1A() };
+    InterstageFilter v1aInterstage { AngryToddInterstages::V1A_to_V2B() };
+    TriodeStage v2bStage { AngryToddStages::V2B() };
+    LevelContourFilter levelContour;
+    TriodeStage v2aStage { AngryToddStages::V2A() };
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
