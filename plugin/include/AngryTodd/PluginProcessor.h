@@ -63,6 +63,12 @@ private:
     bool boostEngaged = false;
     float boosterFatNormalised = 0.5f;
 
+    // 2x oversampling around the whole DSP chain to tame waveshaper aliasing.
+    // Polyphase IIR halfband filters — minimum phase, low latency, low CPU.
+    juce::dsp::Oversampling<float> oversampler {
+        2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR
+    };
+
     // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A → V3A → ToneStack → Master
     InputCoupling inputCoupling;
     TriodeStage v1bStage { AngryToddStages::V1B() };

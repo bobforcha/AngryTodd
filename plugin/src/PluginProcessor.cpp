@@ -144,9 +144,13 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    oversampler.initProcessing (static_cast<size_t> (samplesPerBlock));
+    oversampler.reset();
+
+    const auto factor = oversampler.getOversamplingFactor();
     juce::dsp::ProcessSpec spec {
-        sampleRate,
-        static_cast<juce::uint32> (samplesPerBlock),
+        sampleRate * static_cast<double> (factor),
+        static_cast<juce::uint32> (samplesPerBlock * static_cast<int> (factor)),
         static_cast<juce::uint32> (getTotalNumOutputChannels())
     };
 
@@ -163,11 +167,14 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     toneStack.prepare (spec);
     masterSection.prepare (spec);
 
+    setLatencySamples (juce::roundToInt (oversampler.getLatencyInSamples()));
+
     syncFromParameters();
 }
 
 void AudioPluginAudioProcessor::releaseResources()
 {
+    oversampler.reset();
 }
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -215,21 +222,25 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    auto block = juce::dsp::AudioBlock<float> (buffer);
-    inputCoupling.process (block);
-    v1bStage.process (block);
-    v1bInterstage.process (block);
-    v1aStage.process (block);
-    v1aInterstage.process (block);
-    v2bStage.process (block);
-    levelContour.process (block);
-    v2aStage.process (block);
-    v2aInterstage.process (block);
-    v3aStage.process (block);
+    juce::dsp::AudioBlock<float> baseBlock (buffer);
+    auto osBlock = oversampler.processSamplesUp (baseBlock);
+
+    inputCoupling.process (osBlock);
+    v1bStage.process (osBlock);
+    v1bInterstage.process (osBlock);
+    v1aStage.process (osBlock);
+    v1aInterstage.process (osBlock);
+    v2bStage.process (osBlock);
+    levelContour.process (osBlock);
+    v2aStage.process (osBlock);
+    v2aInterstage.process (osBlock);
+    v3aStage.process (osBlock);
     // V3B cathode follower: unity gain buffer, no processing
-    toneStack.process (block);
-    masterSection.process (block);
+    toneStack.process (osBlock);
+    masterSection.process (osBlock);
     // V4A + V4B cathode followers: unity gain buffers, no processing
+
+    oversampler.processSamplesDown (baseBlock);
 }
 
 //==============================================================================
