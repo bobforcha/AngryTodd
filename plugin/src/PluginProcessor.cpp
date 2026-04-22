@@ -1,6 +1,57 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+namespace ParamID
+{
+    static const juce::String inputGain   = "inputGain";
+    static const juce::String lowContour  = "lowContour";
+    static const juce::String boosterFat  = "boosterFat";
+    static const juce::String boost       = "boost";
+    static const juce::String level       = "level";
+    static const juce::String highContour = "highContour";
+    static const juce::String treble      = "treble";
+    static const juce::String bass        = "bass";
+    static const juce::String mid         = "mid";
+    static const juce::String limit       = "limit";
+    static const juce::String highCut     = "highCut";
+    static const juce::String master      = "master";
+    static const juce::String boostMaster = "boostMaster";
+}
+
+//==============================================================================
+juce::AudioProcessorValueTreeState::ParameterLayout
+AudioPluginAudioProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    auto addFloat = [&](const juce::String& id, const juce::String& name,
+                        float min, float max, float defaultVal)
+    {
+        params.push_back (std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID { id, 1 }, name,
+            juce::NormalisableRange<float> (min, max, 0.01f), defaultVal));
+    };
+
+    addFloat (ParamID::inputGain,   "Input Gain",    0.0f, 10.0f, 1.0f);
+    addFloat (ParamID::lowContour,  "Low Contour",   0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::boosterFat,  "Booster Fat",   0.0f, 1.0f,  0.5f);
+
+    params.push_back (std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID { ParamID::boost, 1 }, "Boost", false));
+
+    addFloat (ParamID::level,       "Level",         0.0f, 1.0f,  0.3f);
+    addFloat (ParamID::highContour, "High Contour",  0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::treble,      "Treble",        0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::bass,        "Bass",          0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::mid,         "Mid",           0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::limit,       "Limit",         0.0f, 1.0f,  1.0f);
+    addFloat (ParamID::highCut,     "High Cut",      0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::master,      "Master",        0.0f, 1.0f,  0.5f);
+    addFloat (ParamID::boostMaster, "Boost Master",  0.0f, 1.0f,  0.5f);
+
+    return { params.begin(), params.end() };
+}
+
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -10,8 +61,16 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    for (const auto& id : { ParamID::inputGain, ParamID::lowContour, ParamID::boosterFat,
+                            ParamID::boost, ParamID::level, ParamID::highContour,
+                            ParamID::treble, ParamID::bass, ParamID::mid, ParamID::limit,
+                            ParamID::highCut, ParamID::master, ParamID::boostMaster })
+    {
+        apvts.addParameterListener (id, this);
+    }
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -103,6 +162,8 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     v3aStage.prepare (spec);
     toneStack.prepare (spec);
     masterSection.prepare (spec);
+
+    syncFromParameters();
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -154,7 +215,6 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A
     auto block = juce::dsp::AudioBlock<float> (buffer);
     inputCoupling.process (block);
     v1bStage.process (block);
@@ -170,16 +230,6 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     toneStack.process (block);
     masterSection.process (block);
     // V4A + V4B cathode followers: unity gain buffers, no processing
-
-    // Output trim — compensate for cumulative gain through the preamp chain
-    static constexpr float outputTrimDb = -18.0f;
-    static const float outputTrimGain = std::pow (10.0f, outputTrimDb / 20.0f);
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-            channelData[sample] *= outputTrimGain;
-    }
 }
 
 //==============================================================================
@@ -196,53 +246,76 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    juce::ignoreUnused (destData);
+    auto state = apvts.copyState();
+    if (auto xml = state.createXml())
+        copyXmlToBinary (*xml, destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    juce::ignoreUnused (data, sizeInBytes);
+    if (auto xml = getXmlFromBinary (data, sizeInBytes))
+        if (xml->hasTagName (apvts.state.getType()))
+            apvts.replaceState (juce::ValueTree::fromXml (*xml));
 }
 
-void AudioPluginAudioProcessor::setLowContour (float normalised)
+//==============================================================================
+void AudioPluginAudioProcessor::parameterChanged (const juce::String& parameterID, float newValue)
 {
-    // normalised: 0.0 = full bass boost (pot at 0Ω), 1.0 = no extra bypass (pot at 50kΩ)
-    float potR = normalised * static_cast<float> (AngryToddStages::V1B().RpotMax);
-    v1bStage.setCathodePotResistance (potR);
+    if (parameterID == ParamID::inputGain)
+    {
+        inputGain = newValue;
+    }
+    else if (parameterID == ParamID::lowContour)
+    {
+        float potR = newValue * static_cast<float> (AngryToddStages::V1B().RpotMax);
+        v1bStage.setCathodePotResistance (potR);
+    }
+    else if (parameterID == ParamID::boosterFat)
+    {
+        boosterFatNormalised = newValue;
+        updateV2bCathodePot();
+    }
+    else if (parameterID == ParamID::boost)
+    {
+        boostEngaged = newValue > 0.5f;
+        updateV2bCathodePot();
+        toneStack.setBoostHighCutEnabled (boostEngaged);
+        masterSection.setBoostEngaged (boostEngaged);
+    }
+    else if (parameterID == ParamID::level)        levelContour.setLevel (newValue);
+    else if (parameterID == ParamID::highContour)  levelContour.setHighContour (newValue);
+    else if (parameterID == ParamID::treble)       toneStack.setTreble (newValue);
+    else if (parameterID == ParamID::bass)         toneStack.setBass (newValue);
+    else if (parameterID == ParamID::mid)          toneStack.setMid (newValue);
+    else if (parameterID == ParamID::limit)        toneStack.setLimit (newValue);
+    else if (parameterID == ParamID::highCut)      toneStack.setBoosterHighCut (newValue);
+    else if (parameterID == ParamID::master)       masterSection.setMaster (newValue);
+    else if (parameterID == ParamID::boostMaster)  masterSection.setBoostMaster (newValue);
 }
 
-void AudioPluginAudioProcessor::setBoosterFat (float normalised)
+void AudioPluginAudioProcessor::syncFromParameters()
 {
-    boosterFatNormalised = normalised;
+    auto get = [this](const juce::String& id) { return apvts.getRawParameterValue (id)->load(); };
+
+    inputGain = get (ParamID::inputGain);
+    boostEngaged = get (ParamID::boost) > 0.5f;
+    boosterFatNormalised = get (ParamID::boosterFat);
+
+    v1bStage.setCathodePotResistance (get (ParamID::lowContour)
+        * static_cast<float> (AngryToddStages::V1B().RpotMax));
     updateV2bCathodePot();
+    levelContour.setLevel (get (ParamID::level));
+    levelContour.setHighContour (get (ParamID::highContour));
+    toneStack.setTreble (get (ParamID::treble));
+    toneStack.setBass (get (ParamID::bass));
+    toneStack.setMid (get (ParamID::mid));
+    toneStack.setLimit (get (ParamID::limit));
+    toneStack.setBoosterHighCut (get (ParamID::highCut));
+    toneStack.setBoostHighCutEnabled (boostEngaged);
+    masterSection.setMaster (get (ParamID::master));
+    masterSection.setBoostMaster (get (ParamID::boostMaster));
+    masterSection.setBoostEngaged (boostEngaged);
 }
-
-void AudioPluginAudioProcessor::setBoostSwitch (bool engaged)
-{
-    boostEngaged = engaged;
-    updateV2bCathodePot();
-    toneStack.setBoostHighCutEnabled (engaged);
-    masterSection.setBoostEngaged (engaged);
-}
-
-void AudioPluginAudioProcessor::setLevel (float normalised)
-{
-    levelContour.setLevel (normalised);
-}
-
-void AudioPluginAudioProcessor::setHighContour (float normalised)
-{
-    levelContour.setHighContour (normalised);
-}
-
-void AudioPluginAudioProcessor::setMaster (float normalised) { masterSection.setMaster (normalised); }
-void AudioPluginAudioProcessor::setBoostMaster (float normalised) { masterSection.setBoostMaster (normalised); }
-
-void AudioPluginAudioProcessor::setTreble (float normalised) { toneStack.setTreble (normalised); }
-void AudioPluginAudioProcessor::setBass (float normalised) { toneStack.setBass (normalised); }
-void AudioPluginAudioProcessor::setMid (float normalised) { toneStack.setMid (normalised); }
-void AudioPluginAudioProcessor::setLimit (float normalised) { toneStack.setLimit (normalised); }
-void AudioPluginAudioProcessor::setBoosterHighCut (float normalised) { toneStack.setBoosterHighCut (normalised); }
 
 void AudioPluginAudioProcessor::updateV2bCathodePot()
 {

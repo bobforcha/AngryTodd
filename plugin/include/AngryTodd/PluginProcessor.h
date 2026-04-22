@@ -9,7 +9,8 @@
 #include "MasterSection.h"
 
 //==============================================================================
-class AudioPluginAudioProcessor final : public juce::AudioProcessor
+class AudioPluginAudioProcessor final : public juce::AudioProcessor,
+                                        private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -48,42 +49,21 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    // Parameters (directly accessible for now; will migrate to AudioProcessorValueTreeState)
-    float inputGain = 1.0f;
+    //==============================================================================
+    juce::AudioProcessorValueTreeState apvts;
 
-    // Set LOW CONTOUR pot (0.0 = full bass boost, 1.0 = no extra bypass)
-    void setLowContour (float normalised);
-
-    // Set BOOSTER FAT pot (0.0 = full bass boost, 1.0 = no extra bypass)
-    void setBoosterFat (float normalised);
-
-    // Set BOOST switch (true = P2 controls bass, false = C12 shorted to ground = full boost)
-    void setBoostSwitch (bool engaged);
-
-    // Set LEVEL (0.0 = full volume, 1.0 = muted)
-    void setLevel (float normalised);
-
-    // Set HIGH CONTOUR (0.0 = no treble, 1.0 = full treble)
-    void setHighContour (float normalised);
-
-    // Tone stack controls (0–1)
-    void setTreble (float normalised);
-    void setBass (float normalised);
-    void setMid (float normalised);
-    void setLimit (float normalised);
-    void setBoosterHighCut (float normalised);
-
-    // Master volume controls (0–1)
-    void setMaster (float normalised);
-    void setBoostMaster (float normalised);
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
-    // BOOST switch and pot state
-    bool boostEngaged = false;
-    float boosterFatNormalised = 0.5f;
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+    void syncFromParameters();
     void updateV2bCathodePot();
 
-    // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A
+    float inputGain = 1.0f;
+    bool boostEngaged = false;
+    float boosterFatNormalised = 0.5f;
+
+    // Preamp signal chain: V1B → V1A → V2B → Level/Contour → V2A → V3A → ToneStack → Master
     InputCoupling inputCoupling;
     TriodeStage v1bStage { AngryToddStages::V1B() };
     InterstageFilter v1bInterstage { AngryToddInterstages::V1B_to_V1A() };

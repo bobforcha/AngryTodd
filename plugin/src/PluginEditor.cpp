@@ -7,154 +7,38 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
 {
     setSize (1400, 500);
 
-    // Input Gain knob
-    inputGainSlider.setSliderStyle (juce::Slider::Rotary);
-    inputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    inputGainSlider.setRange (0.0, 10.0, 0.01);
-    inputGainSlider.setValue (1.0);
-    inputGainSlider.addListener (this);
-    addAndMakeVisible (inputGainSlider);
+    auto setupKnob = [this] (juce::Slider& s, juce::Label& label, const juce::String& text,
+                             const juce::String& paramID,
+                             std::unique_ptr<SliderAttachment>& attachment)
+    {
+        s.setSliderStyle (juce::Slider::Rotary);
+        s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
+        addAndMakeVisible (s);
 
-    inputGainLabel.setText ("Input Gain", juce::dontSendNotification);
-    inputGainLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (inputGainLabel);
+        label.setText (text, juce::dontSendNotification);
+        label.setJustificationType (juce::Justification::centred);
+        addAndMakeVisible (label);
 
-    // Low Contour knob
-    lowContourSlider.setSliderStyle (juce::Slider::Rotary);
-    lowContourSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    lowContourSlider.setRange (0.0, 1.0, 0.01);
-    lowContourSlider.setValue (0.5);
-    lowContourSlider.addListener (this);
-    addAndMakeVisible (lowContourSlider);
+        attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, s);
+    };
 
-    lowContourLabel.setText ("Low Contour", juce::dontSendNotification);
-    lowContourLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (lowContourLabel);
+    setupKnob (inputGainSlider,   inputGainLabel,   "Input Gain",   "inputGain",   inputGainAttachment);
+    setupKnob (lowContourSlider,  lowContourLabel,  "Low Contour",  "lowContour",  lowContourAttachment);
+    setupKnob (boosterFatSlider,  boosterFatLabel,  "Booster Fat",  "boosterFat",  boosterFatAttachment);
 
-    // Booster Fat knob
-    boosterFatSlider.setSliderStyle (juce::Slider::Rotary);
-    boosterFatSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    boosterFatSlider.setRange (0.0, 1.0, 0.01);
-    boosterFatSlider.setValue (0.5);
-    boosterFatSlider.addListener (this);
-    addAndMakeVisible (boosterFatSlider);
-
-    boosterFatLabel.setText ("Booster Fat", juce::dontSendNotification);
-    boosterFatLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (boosterFatLabel);
-
-    // Boost switch
     boostSwitch.setButtonText ("Boost");
-    boostSwitch.addListener (this);
     addAndMakeVisible (boostSwitch);
+    boostAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "boost", boostSwitch);
 
-    // Level knob
-    levelSlider.setSliderStyle (juce::Slider::Rotary);
-    levelSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    levelSlider.setRange (0.0, 1.0, 0.01);
-    levelSlider.setValue (0.3);
-    levelSlider.addListener (this);
-    addAndMakeVisible (levelSlider);
-
-    levelLabel.setText ("Level", juce::dontSendNotification);
-    levelLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (levelLabel);
-
-    // High Contour knob
-    highContourSlider.setSliderStyle (juce::Slider::Rotary);
-    highContourSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    highContourSlider.setRange (0.0, 1.0, 0.01);
-    highContourSlider.setValue (0.5);
-    highContourSlider.addListener (this);
-    addAndMakeVisible (highContourSlider);
-
-    highContourLabel.setText ("High Contour", juce::dontSendNotification);
-    highContourLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (highContourLabel);
-
-    // Treble knob
-    trebleSlider.setSliderStyle (juce::Slider::Rotary);
-    trebleSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    trebleSlider.setRange (0.0, 1.0, 0.01);
-    trebleSlider.setValue (0.5);
-    trebleSlider.addListener (this);
-    addAndMakeVisible (trebleSlider);
-
-    trebleLabel.setText ("Treble", juce::dontSendNotification);
-    trebleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (trebleLabel);
-
-    // Bass knob
-    bassSlider.setSliderStyle (juce::Slider::Rotary);
-    bassSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    bassSlider.setRange (0.0, 1.0, 0.01);
-    bassSlider.setValue (0.5);
-    bassSlider.addListener (this);
-    addAndMakeVisible (bassSlider);
-
-    bassLabel.setText ("Bass", juce::dontSendNotification);
-    bassLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (bassLabel);
-
-    // Mid knob
-    midSlider.setSliderStyle (juce::Slider::Rotary);
-    midSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    midSlider.setRange (0.0, 1.0, 0.01);
-    midSlider.setValue (0.5);
-    midSlider.addListener (this);
-    addAndMakeVisible (midSlider);
-
-    midLabel.setText ("Mid", juce::dontSendNotification);
-    midLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (midLabel);
-
-    // Limit knob
-    limitSlider.setSliderStyle (juce::Slider::Rotary);
-    limitSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    limitSlider.setRange (0.0, 1.0, 0.01);
-    limitSlider.setValue (1.0);
-    limitSlider.addListener (this);
-    addAndMakeVisible (limitSlider);
-
-    limitLabel.setText ("Limit", juce::dontSendNotification);
-    limitLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (limitLabel);
-
-    // Booster High Cut knob
-    highCutSlider.setSliderStyle (juce::Slider::Rotary);
-    highCutSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    highCutSlider.setRange (0.0, 1.0, 0.01);
-    highCutSlider.setValue (0.5);
-    highCutSlider.addListener (this);
-    addAndMakeVisible (highCutSlider);
-
-    highCutLabel.setText ("High Cut", juce::dontSendNotification);
-    highCutLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (highCutLabel);
-
-    // Master knob
-    masterSlider.setSliderStyle (juce::Slider::Rotary);
-    masterSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    masterSlider.setRange (0.0, 1.0, 0.01);
-    masterSlider.setValue (0.5);
-    masterSlider.addListener (this);
-    addAndMakeVisible (masterSlider);
-
-    masterLabel.setText ("Master", juce::dontSendNotification);
-    masterLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (masterLabel);
-
-    // Boost Master knob
-    boostMasterSlider.setSliderStyle (juce::Slider::Rotary);
-    boostMasterSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
-    boostMasterSlider.setRange (0.0, 1.0, 0.01);
-    boostMasterSlider.setValue (0.5);
-    boostMasterSlider.addListener (this);
-    addAndMakeVisible (boostMasterSlider);
-
-    boostMasterLabel.setText ("Boost Master", juce::dontSendNotification);
-    boostMasterLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (boostMasterLabel);
+    setupKnob (levelSlider,       levelLabel,       "Level",        "level",       levelAttachment);
+    setupKnob (highContourSlider, highContourLabel, "High Contour", "highContour", highContourAttachment);
+    setupKnob (trebleSlider,      trebleLabel,      "Treble",       "treble",      trebleAttachment);
+    setupKnob (bassSlider,        bassLabel,        "Bass",         "bass",        bassAttachment);
+    setupKnob (midSlider,         midLabel,         "Mid",          "mid",         midAttachment);
+    setupKnob (limitSlider,       limitLabel,       "Limit",        "limit",       limitAttachment);
+    setupKnob (highCutSlider,     highCutLabel,     "High Cut",     "highCut",     highCutAttachment);
+    setupKnob (masterSlider,      masterLabel,      "Master",       "master",      masterAttachment);
+    setupKnob (boostMasterSlider, boostMasterLabel, "Boost Master", "boostMaster", boostMasterAttachment);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -207,75 +91,34 @@ void AudioPluginAudioProcessorEditor::resized()
     highContourLabel.setBounds (x, startY, knobSize, labelHeight);
     highContourSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
 
-    // Second row: Tone Stack
+    // Second row: Tone Stack + Master
     int row2Y = startY + labelHeight + knobSize + 40;
     x = 100;
 
-    // Treble
     trebleLabel.setBounds (x, row2Y, knobSize, labelHeight);
     trebleSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // Bass
     x += knobSize + spacing;
     bassLabel.setBounds (x, row2Y, knobSize, labelHeight);
     bassSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // Mid
     x += knobSize + spacing;
     midLabel.setBounds (x, row2Y, knobSize, labelHeight);
     midSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // Limit
     x += knobSize + spacing;
     limitLabel.setBounds (x, row2Y, knobSize, labelHeight);
     limitSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // High Cut
     x += knobSize + spacing;
     highCutLabel.setBounds (x, row2Y, knobSize, labelHeight);
     highCutSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // Master
     x += knobSize + spacing;
     masterLabel.setBounds (x, row2Y, knobSize, labelHeight);
     masterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
 
-    // Boost Master
     x += knobSize + spacing;
     boostMasterLabel.setBounds (x, row2Y, knobSize, labelHeight);
     boostMasterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-}
-
-void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider)
-{
-    if (slider == &inputGainSlider)
-        processorRef.inputGain = static_cast<float> (inputGainSlider.getValue());
-    else if (slider == &lowContourSlider)
-        processorRef.setLowContour (static_cast<float> (lowContourSlider.getValue()));
-    else if (slider == &boosterFatSlider)
-        processorRef.setBoosterFat (static_cast<float> (boosterFatSlider.getValue()));
-    else if (slider == &levelSlider)
-        processorRef.setLevel (static_cast<float> (levelSlider.getValue()));
-    else if (slider == &highContourSlider)
-        processorRef.setHighContour (static_cast<float> (highContourSlider.getValue()));
-    else if (slider == &trebleSlider)
-        processorRef.setTreble (static_cast<float> (trebleSlider.getValue()));
-    else if (slider == &bassSlider)
-        processorRef.setBass (static_cast<float> (bassSlider.getValue()));
-    else if (slider == &midSlider)
-        processorRef.setMid (static_cast<float> (midSlider.getValue()));
-    else if (slider == &limitSlider)
-        processorRef.setLimit (static_cast<float> (limitSlider.getValue()));
-    else if (slider == &highCutSlider)
-        processorRef.setBoosterHighCut (static_cast<float> (highCutSlider.getValue()));
-    else if (slider == &masterSlider)
-        processorRef.setMaster (static_cast<float> (masterSlider.getValue()));
-    else if (slider == &boostMasterSlider)
-        processorRef.setBoostMaster (static_cast<float> (boostMasterSlider.getValue()));
-}
-
-void AudioPluginAudioProcessorEditor::buttonClicked (juce::Button* button)
-{
-    if (button == &boostSwitch)
-        processorRef.setBoostSwitch (boostSwitch.getToggleState());
 }
