@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "AngryToddLookAndFeel.h"
 
 //==============================================================================
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor
@@ -18,6 +19,8 @@ private:
     using SliderAttachment = APVTS::SliderAttachment;
     using ButtonAttachment = APVTS::ButtonAttachment;
 
+    AngryToddLookAndFeel lookAndFeel;
+
     juce::Slider inputGainSlider;
     juce::Label inputGainLabel;
     std::unique_ptr<SliderAttachment> inputGainAttachment;
@@ -31,6 +34,7 @@ private:
     std::unique_ptr<SliderAttachment> boosterFatAttachment;
 
     juce::ToggleButton boostSwitch;
+    juce::Label boostLabel;
     std::unique_ptr<ButtonAttachment> boostAttachment;
 
     juce::Slider levelSlider;
@@ -40,6 +44,10 @@ private:
     juce::Slider highContourSlider;
     juce::Label highContourLabel;
     std::unique_ptr<SliderAttachment> highContourAttachment;
+
+    juce::Slider masterSlider;
+    juce::Label masterLabel;
+    std::unique_ptr<SliderAttachment> masterAttachment;
 
     juce::Slider trebleSlider;
     juce::Label trebleLabel;
@@ -60,10 +68,6 @@ private:
     juce::Slider highCutSlider;
     juce::Label highCutLabel;
     std::unique_ptr<SliderAttachment> highCutAttachment;
-
-    juce::Slider masterSlider;
-    juce::Label masterLabel;
-    std::unique_ptr<SliderAttachment> masterAttachment;
 
     juce::Slider boostMasterSlider;
     juce::Label boostMasterLabel;

@@ -5,120 +5,147 @@
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
-    setSize (1400, 500);
+    setLookAndFeel (&lookAndFeel);
+    setSize (1000, 600);
 
     auto setupKnob = [this] (juce::Slider& s, juce::Label& label, const juce::String& text,
                              const juce::String& paramID,
                              std::unique_ptr<SliderAttachment>& attachment)
     {
-        s.setSliderStyle (juce::Slider::Rotary);
-        s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
         addAndMakeVisible (s);
+        s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+        s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
 
         label.setText (text, juce::dontSendNotification);
         label.setJustificationType (juce::Justification::centred);
+        label.attachToComponent (&s, false);
         addAndMakeVisible (label);
 
         attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, s);
     };
 
-    setupKnob (inputGainSlider,   inputGainLabel,   "Input Gain",   "inputGain",   inputGainAttachment);
-    setupKnob (lowContourSlider,  lowContourLabel,  "Low Contour",  "lowContour",  lowContourAttachment);
-    setupKnob (boosterFatSlider,  boosterFatLabel,  "Booster Fat",  "boosterFat",  boosterFatAttachment);
+    // Top row
+    setupKnob (inputGainSlider,   inputGainLabel,   "INPUT GAIN",  "inputGain",   inputGainAttachment);
+    setupKnob (lowContourSlider,  lowContourLabel,  "LOW CONT",    "lowContour",  lowContourAttachment);
+    setupKnob (boosterFatSlider,  boosterFatLabel,  "BOOSTER FAT", "boosterFat",  boosterFatAttachment);
+    setupKnob (levelSlider,       levelLabel,       "LEVEL",       "level",       levelAttachment);
+    setupKnob (highContourSlider, highContourLabel, "HIGH CONT",   "highContour", highContourAttachment);
+    setupKnob (masterSlider,      masterLabel,      "MASTER",      "master",      masterAttachment);
 
-    boostSwitch.setButtonText ("Boost");
+    // Bottom row
+    setupKnob (trebleSlider,      trebleLabel,      "TREBLE",       "treble",      trebleAttachment);
+    setupKnob (bassSlider,        bassLabel,        "BASS",         "bass",        bassAttachment);
+    setupKnob (midSlider,         midLabel,         "MID",          "mid",         midAttachment);
+    setupKnob (limitSlider,       limitLabel,       "LIMIT",        "limit",       limitAttachment);
+    setupKnob (highCutSlider,     highCutLabel,     "BOOST HIGH CUT", "highCut",   highCutAttachment);
+    setupKnob (boostMasterSlider, boostMasterLabel, "BOOST MASTER", "boostMaster", boostMasterAttachment);
+
+    // Boost button (with LED drawn by LookAndFeel) + label below
+    boostSwitch.setButtonText ({});
     addAndMakeVisible (boostSwitch);
     boostAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "boost", boostSwitch);
 
-    setupKnob (levelSlider,       levelLabel,       "Level",        "level",       levelAttachment);
-    setupKnob (highContourSlider, highContourLabel, "High Contour", "highContour", highContourAttachment);
-    setupKnob (trebleSlider,      trebleLabel,      "Treble",       "treble",      trebleAttachment);
-    setupKnob (bassSlider,        bassLabel,        "Bass",         "bass",        bassAttachment);
-    setupKnob (midSlider,         midLabel,         "Mid",          "mid",         midAttachment);
-    setupKnob (limitSlider,       limitLabel,       "Limit",        "limit",       limitAttachment);
-    setupKnob (highCutSlider,     highCutLabel,     "High Cut",     "highCut",     highCutAttachment);
-    setupKnob (masterSlider,      masterLabel,      "Master",       "master",      masterAttachment);
-    setupKnob (boostMasterSlider, boostMasterLabel, "Boost Master", "boostMaster", boostMasterAttachment);
+    boostLabel.setText ("BOOST", juce::dontSendNotification);
+    boostLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (boostLabel);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
 {
+    setLookAndFeel (nullptr);
 }
 
 //==============================================================================
 void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colours::aquamarine);
+    g.fillAll (AngryToddLookAndFeel::panelColour);
 
-    g.setColour (juce::Colours::beige);
-    g.setFont (45.0f);
-    g.drawFittedText ("Angry Todd", getLocalBounds(), juce::Justification::topLeft, 1);
+    auto bounds = getLocalBounds().toFloat();
+
+    // "Angry Todd" signature-style logo, right-aligned at the bottom (echoing
+    // the Langner signature position on the real DCP-1 panel).
+    auto logoArea = juce::Rectangle<float> (bounds.getRight() - 360.0f,
+                                            bounds.getBottom() - 135.0f,
+                                            340.0f,
+                                            90.0f);
+
+    juce::Font logoFont (juce::FontOptions (64.0f).withStyle ("Bold Italic"));
+    g.setFont (logoFont);
+
+    // Drop shadow
+    g.setColour (juce::Colours::black.withAlpha (0.35f));
+    g.drawText ("Angry Todd",
+                logoArea.translated (3.0f, 3.0f).toNearestInt(),
+                juce::Justification::centredRight);
+
+    // Logo itself
+    g.setColour (juce::Colours::white);
+    g.drawText ("Angry Todd", logoArea.toNearestInt(), juce::Justification::centredRight);
+
+    // Trademark, plain black, right-aligned under the logo
+    auto tmArea = logoArea.withY (logoArea.getBottom() + 4.0f).withHeight (20.0f);
+    g.setColour (juce::Colours::black);
+    g.setFont (juce::Font (juce::FontOptions (14.0f)));
+    g.drawText (juce::String::fromUTF8 ("Bob's Plugin Bargain Bin\xe2\x84\xa2"),
+                tmArea.toNearestInt(),
+                juce::Justification::centredRight);
+
+    // DCP-1 model tag on the lower-left, same italic style as the logo
+    juce::Rectangle<int> modelArea (20, getHeight() - 70, 150, 50);
+    juce::Font modelFont (juce::FontOptions (32.0f).withStyle ("Bold Italic"));
+    g.setFont (modelFont);
+
+    g.setColour (juce::Colours::black.withAlpha (0.35f));
+    g.drawText ("DCP-1", modelArea.translated (2, 2), juce::Justification::centredLeft);
+
+    g.setColour (juce::Colours::white);
+    g.drawText ("DCP-1", modelArea, juce::Justification::centredLeft);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
 {
-    auto knobSize = 120;
-    auto labelHeight = 20;
-    auto startY = 80;
-    auto spacing = 15;
+    constexpr int knobSize   = 110;
+    constexpr int labelHeight = 18;
+    constexpr int textBoxHeight = 18;
+    constexpr int topMargin  = 50;
+    constexpr int rowGap     = 40;
 
-    int x = 30;
+    auto bounds = getLocalBounds();
+    const int columnCount = 6;
+    const int rowWidth = knobSize * columnCount;
+    const int spacing  = (bounds.getWidth() - rowWidth - 60) / (columnCount - 1);
+    const int startX   = 30;
 
-    // Input Gain
-    inputGainLabel.setBounds (x, startY, knobSize, labelHeight);
-    inputGainSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
+    auto placeKnob = [&] (juce::Slider& s, int col, int yTop)
+    {
+        int x = startX + col * (knobSize + spacing);
+        // attachToComponent places the label above automatically; leave room for it.
+        s.setBounds (x, yTop + labelHeight, knobSize, knobSize);
+    };
 
-    // Low Contour
-    x += knobSize + spacing;
-    lowContourLabel.setBounds (x, startY, knobSize, labelHeight);
-    lowContourSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
+    const int row1Y = topMargin;
+    const int row2Y = row1Y + labelHeight + knobSize + textBoxHeight + rowGap;
 
-    // Booster Fat
-    x += knobSize + spacing;
-    boosterFatLabel.setBounds (x, startY, knobSize, labelHeight);
-    boosterFatSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
+    placeKnob (inputGainSlider,   0, row1Y);
+    placeKnob (lowContourSlider,  1, row1Y);
+    placeKnob (boosterFatSlider,  2, row1Y);
+    placeKnob (levelSlider,       3, row1Y);
+    placeKnob (highContourSlider, 4, row1Y);
+    placeKnob (masterSlider,      5, row1Y);
 
-    // Boost switch (below Booster Fat knob)
-    boostSwitch.setBounds (x + 15, startY + labelHeight + knobSize + 5, 90, 25);
+    placeKnob (trebleSlider,      0, row2Y);
+    placeKnob (bassSlider,        1, row2Y);
+    placeKnob (midSlider,         2, row2Y);
+    placeKnob (limitSlider,       3, row2Y);
+    placeKnob (highCutSlider,     4, row2Y);
+    placeKnob (boostMasterSlider, 5, row2Y);
 
-    // Level
-    x += knobSize + spacing;
-    levelLabel.setBounds (x, startY, knobSize, labelHeight);
-    levelSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
-
-    // High Contour
-    x += knobSize + spacing;
-    highContourLabel.setBounds (x, startY, knobSize, labelHeight);
-    highContourSlider.setBounds (x, startY + labelHeight, knobSize, knobSize);
-
-    // Second row: Tone Stack + Master
-    int row2Y = startY + labelHeight + knobSize + 40;
-    x = 100;
-
-    trebleLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    trebleSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    bassLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    bassSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    midLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    midSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    limitLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    limitSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    highCutLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    highCutSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    masterLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    masterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
-
-    x += knobSize + spacing;
-    boostMasterLabel.setBounds (x, row2Y, knobSize, labelHeight);
-    boostMasterSlider.setBounds (x, row2Y + labelHeight, knobSize, knobSize);
+    // Boost button on its own row beneath the knobs, centered horizontally
+    const int boostW = 80;
+    const int boostH = 90;
+    const int knobsBottom = row2Y + labelHeight + knobSize + textBoxHeight;
+    const int boostX = (bounds.getWidth() - boostW) / 2;
+    const int boostY = knobsBottom + 20;
+    boostSwitch.setBounds (boostX, boostY, boostW, boostH);
+    boostLabel.setBounds (boostX - 20, boostY + boostH + 2, boostW + 40, labelHeight);
 }
