@@ -19,11 +19,23 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/AngryTodd)
 set(SOURCE_FILES
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
+    src/InputCoupling.cpp
+    src/TriodeStage.cpp
+    src/InterstageFilter.cpp
+    src/LevelContourFilter.cpp
+    src/ToneStack.cpp
+    src/MasterSection.cpp
 )
 
 set(HEADER_FILES
     ${INCLUDE_DIR}/PluginProcessor.h
     ${INCLUDE_DIR}/PluginEditor.h
+    ${INCLUDE_DIR}/InputCoupling.h
+    ${INCLUDE_DIR}/TriodeStage.h
+    ${INCLUDE_DIR}/InterstageFilter.h
+    ${INCLUDE_DIR}/LevelContourFilter.h
+    ${INCLUDE_DIR}/ToneStack.h
+    ${INCLUDE_DIR}/MasterSection.h
 )
 
 target_sources(${PROJECT_NAME}
@@ -40,6 +52,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         juce::juce_audio_utils
+        juce::juce_dsp
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
