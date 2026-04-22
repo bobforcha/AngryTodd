@@ -19,8 +19,6 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/AngryTodd)
 set(SOURCE_FILES
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
-    src/Tube.cpp
-    src/DSPChain.cpp
     src/InputCoupling.cpp
     src/TriodeStage.cpp
     src/InterstageFilter.cpp
@@ -32,8 +30,6 @@ set(SOURCE_FILES
 set(HEADER_FILES
     ${INCLUDE_DIR}/PluginProcessor.h
     ${INCLUDE_DIR}/PluginEditor.h
-    ${INCLUDE_DIR}/Tube.h
-    ${INCLUDE_DIR}/DSPChain.h
     ${INCLUDE_DIR}/InputCoupling.h
     ${INCLUDE_DIR}/TriodeStage.h
     ${INCLUDE_DIR}/InterstageFilter.h
